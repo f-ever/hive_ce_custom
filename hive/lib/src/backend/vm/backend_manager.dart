@@ -23,8 +23,9 @@ class BackendManager implements BackendManagerInterface {
     String? path,
     bool crashRecovery,
     HiveCipher? cipher,
-    String? collection,
-  ) async {
+    String? collection, [
+    String? extension,
+  ]) async {
     if (path == null) {
       throw HiveError('You need to initialize Hive or '
           'provide a path to store the box.');
@@ -42,7 +43,7 @@ class BackendManager implements BackendManagerInterface {
       await dir.create(recursive: true);
     }
 
-    final file = await findHiveFileAndCleanUp(name, path);
+    final file = await findHiveFileAndCleanUp(name, path, extension);
     final lockFile = File('$path$_delimiter$name.lock');
 
     final backend = StorageBackendVm(file, lockFile, crashRecovery, cipher);
@@ -52,9 +53,14 @@ class BackendManager implements BackendManagerInterface {
 
   /// Not part of public API
   @visibleForTesting
-  Future<File> findHiveFileAndCleanUp(String name, String path) async {
-    final hiveFile = File('$path$_delimiter$name.hive');
-    final compactedFile = File('$path$_delimiter$name.hivec');
+  Future<File> findHiveFileAndCleanUp(
+    String name,
+    String path, [
+    String? extension,
+  ]) async {
+    extension ??= 'hive';
+    final hiveFile = File('$path$_delimiter$name.$extension');
+    final compactedFile = File('$path$_delimiter$name.${extension}c');
 
     if (await hiveFile.exists()) {
       if (await compactedFile.exists()) {
@@ -71,7 +77,12 @@ class BackendManager implements BackendManagerInterface {
   }
 
   @override
-  Future<void> deleteBox(String name, String? path, String? collection) async {
+  Future<void> deleteBox(
+    String name,
+    String? path,
+    String? collection, [
+    String? extension,
+  ]) async {
     ArgumentError.checkNotNull(path, 'path');
 
     if (path!.endsWith(_delimiter)) path = path.substring(0, path.length - 1);
@@ -80,8 +91,9 @@ class BackendManager implements BackendManagerInterface {
       path = path + collection;
     }
 
-    await _deleteFileIfExists(File('$path$_delimiter$name.hive'));
-    await _deleteFileIfExists(File('$path$_delimiter$name.hivec'));
+    extension ??= 'hive';
+    await _deleteFileIfExists(File('$path$_delimiter$name.$extension'));
+    await _deleteFileIfExists(File('$path$_delimiter$name.${extension}c'));
     await _deleteFileIfExists(File('$path$_delimiter$name.lock'));
   }
 
@@ -92,7 +104,12 @@ class BackendManager implements BackendManagerInterface {
   }
 
   @override
-  Future<bool> boxExists(String name, String? path, String? collection) async {
+  Future<bool> boxExists(
+    String name,
+    String? path,
+    String? collection, [
+    String? extension,
+  ]) async {
     ArgumentError.checkNotNull(path, 'path');
 
     if (path!.endsWith(_delimiter)) path = path.substring(0, path.length - 1);
@@ -101,8 +118,10 @@ class BackendManager implements BackendManagerInterface {
       path = path + collection;
     }
 
-    return await File('$path$_delimiter$name.hive').exists() ||
-        await File('$path$_delimiter$name.hivec').exists() ||
-        await File('$path$_delimiter$name.lock').exists();
+    extension ??= 'hive';
+    final hiveFile = File('$path$_delimiter$name.$extension');
+    final compactedFile = File('$path$_delimiter$name.${extension}c');
+
+    return await hiveFile.exists() || await compactedFile.exists();
   }
 }

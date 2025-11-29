@@ -84,6 +84,7 @@ RECOMMENDED ACTIONS:
     String? path,
     Uint8List? bytes,
     String? collection,
+    String? extension,
   ) async {
     assert(path == null || bytes == null);
     assert(
@@ -124,6 +125,7 @@ RECOMMENDED ACTIONS:
             recovery,
             cipher,
             collection,
+            extension,
           );
         }
 
@@ -175,6 +177,7 @@ RECOMMENDED ACTIONS:
     String? path,
     Uint8List? bytes,
     String? collection,
+    String? extension,
     @Deprecated('Use encryptionCipher instead') List<int>? encryptionKey,
   }) async {
     if (encryptionKey != null) {
@@ -190,6 +193,7 @@ RECOMMENDED ACTIONS:
       path,
       bytes,
       collection,
+      extension,
     ) as Box<E>;
   }
 
@@ -202,6 +206,7 @@ RECOMMENDED ACTIONS:
     bool crashRecovery = true,
     String? path,
     String? collection,
+    String? extension,
     @Deprecated('Use encryptionCipher instead') List<int>? encryptionKey,
   }) async {
     if (encryptionKey != null) {
@@ -217,6 +222,7 @@ RECOMMENDED ACTIONS:
       path,
       null,
       collection,
+      extension,
     ) as LazyBox<E>;
   }
 
@@ -277,13 +283,19 @@ RECOMMENDED ACTIONS:
     String name, {
     String? path,
     String? collection,
+    String? extension,
   }) async {
     final lowerCaseName = name.toLowerCase();
     final box = _boxes[lowerCaseName];
     if (box != null) {
       await box.deleteFromDisk();
     } else {
-      await _manager.deleteBox(lowerCaseName, path ?? homePath, collection);
+      await _manager.deleteBox(
+        lowerCaseName,
+        path ?? homePath,
+        collection,
+        extension,
+      );
     }
   }
 
@@ -306,12 +318,14 @@ RECOMMENDED ACTIONS:
     String name, {
     String? path,
     String? collection,
+    String? extension,
   }) async {
     final lowerCaseName = name.toLowerCase();
     return await _manager.boxExists(
       lowerCaseName,
       path ?? homePath,
       collection,
+      extension,
     );
   }
 }

@@ -204,8 +204,7 @@ RECOMMENDED ACTIONS:
       await readRaf.setPosition(0);
       final reader = BufferedFileReader(readRaf);
 
-      final fileDirectory = path.substring(0, path.length - 5);
-      final compactFile = File('$fileDirectory.hivec');
+      final compactFile = File('${path}c');
       final compactRaf = await compactFile.open(mode: FileMode.write);
       final writer = BufferedFileWriter(compactRaf);
 

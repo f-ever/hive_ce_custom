@@ -17,18 +17,29 @@ class BackendManager implements BackendManagerInterface {
     String? path,
     bool crashRecovery,
     HiveCipher? cipher,
-    String? collection,
-  ) {
+    String? collection, [
+    String? extension,
+  ]) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteBox(String name, String? path, String? collection) {
+  Future<void> deleteBox(
+    String name,
+    String? path,
+    String? collection, [
+    String? extension,
+  ]) {
     throw UnimplementedError();
   }
 
   @override
-  Future<bool> boxExists(String name, String? path, String? collection) {
+  Future<bool> boxExists(
+    String name,
+    String? path,
+    String? collection, [
+    String? extension,
+  ]) {
     throw UnimplementedError();
   }
 }
