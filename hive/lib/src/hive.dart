@@ -29,6 +29,7 @@ abstract class HiveInterface implements TypeRegistry {
     String? path,
     Uint8List? bytes,
     String? collection,
+    String? extension,
     @Deprecated('Use encryptionCipher instead') List<int>? encryptionKey,
   });
 
@@ -44,17 +45,18 @@ abstract class HiveInterface implements TypeRegistry {
     bool crashRecovery = true,
     String? path,
     String? collection,
+    String? extension,
     @Deprecated('Use encryptionCipher instead') List<int>? encryptionKey,
   });
 
   /// Returns a previously opened box.
-  Box<E> box<E>(String name);
+  Box<E> box<E>(String name, {String? extension});
 
   /// Returns a previously opened lazy box.
-  LazyBox<E> lazyBox<E>(String name);
+  LazyBox<E> lazyBox<E>(String name, {String? extension});
 
   /// Checks if a specific box is currently open.
-  bool isBoxOpen(String name);
+  bool isBoxOpen(String name, {String? extension});
 
   /// Closes all open boxes.
   Future<void> close();
@@ -62,7 +64,11 @@ abstract class HiveInterface implements TypeRegistry {
   /// Removes the file which contains the box and closes the box.
   ///
   /// In the browser, the IndexedDB database is being removed.
-  Future<void> deleteBoxFromDisk(String name, {String? path});
+  Future<void> deleteBoxFromDisk(
+    String name, {
+    String? path,
+    String? extension,
+  });
 
   /// Deletes all currently open boxes from disk.
   ///

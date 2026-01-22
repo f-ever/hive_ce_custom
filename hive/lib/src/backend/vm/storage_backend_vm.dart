@@ -106,12 +106,27 @@ class StorageBackendVm extends StorageBackend {
       if (Logger.unmatchedIsolationWarning && props.isolated && !isolated) {
         Logger.w(HiveWarning.unmatchedIsolation);
       }
+      // Delete existing lock file to avoid access issues
+      try {
+        await _lockFile.delete();
+      } catch (_) {
+        // Ignore if deletion fails
+      }
     }
 
     lockRaf = await _lockFile.open(mode: FileMode.write);
     lockRaf.writeStringSync(jsonEncode(LockProps(isolated: isolated)));
     lockRaf.flushSync();
     await lockRaf.lock();
+
+    // Set hidden attribute on Windows after locking
+    if (Platform.isWindows) {
+      try {
+        await Process.run('attrib', ['+H', _lockFile.path]);
+      } catch (_) {
+        // Silently ignore if setting hidden attribute fails
+      }
+    }
 
     int recoveryOffset;
     if (!lazy) {
@@ -202,8 +217,7 @@ class StorageBackendVm extends StorageBackend {
       await readRaf.setPosition(0);
       final reader = BufferedFileReader(readRaf);
 
-      final fileDirectory = path.substring(0, path.length - 5);
-      final compactFile = File('$fileDirectory.hivec');
+      final compactFile = File('${path}c');
       final compactRaf = await compactFile.open(mode: FileMode.write);
       final writer = BufferedFileWriter(compactRaf);
 

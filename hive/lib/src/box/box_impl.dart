@@ -15,6 +15,7 @@ class BoxImpl<E> extends BoxBaseImpl<E> implements Box<E> {
     super.compactionStrategy,
     super.backend, {
     super.isolated = false,
+    super.extension,
   });
 
   @override

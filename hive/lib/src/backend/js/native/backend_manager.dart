@@ -19,8 +19,9 @@ class BackendManager implements BackendManagerInterface {
     bool crashRecovery,
     HiveCipher? cipher,
     int? keyCrc,
-    String? collection,
-  ) async {
+    String? collection, [
+    String? extension,
+  ]) async {
     // compatibility for old store format
     final databaseName = collection ?? name;
     final objectStoreName = collection == null ? 'box' : name;
@@ -56,7 +57,12 @@ class BackendManager implements BackendManagerInterface {
   }
 
   @override
-  Future<void> deleteBox(String name, String? path, String? collection) async {
+  Future<void> deleteBox(
+    String name,
+    String? path,
+    String? collection, [
+    String? extension,
+  ]) async {
     Logger.d('Delete $name // $collection from disk');
 
     // compatibility for old store format
@@ -82,7 +88,12 @@ class BackendManager implements BackendManagerInterface {
   }
 
   @override
-  Future<bool> boxExists(String name, String? path, String? collection) async {
+  Future<bool> boxExists(
+    String name,
+    String? path,
+    String? collection, [
+    String? extension,
+  ]) async {
     // compatibility for old store format
     final databaseName = collection ?? name;
     final objectStoreName = collection == null ? 'box' : name;

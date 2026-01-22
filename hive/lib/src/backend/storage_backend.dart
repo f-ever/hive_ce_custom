@@ -55,12 +55,23 @@ abstract class BackendManagerInterface {
     bool crashRecovery,
     HiveCipher? cipher,
     int? keyCrc,
-    String? collection,
-  );
+    String? collection, [
+    String? extension,
+  ]);
 
   /// Deletes database
-  Future<void> deleteBox(String name, String? path, String? collection);
+  Future<void> deleteBox(
+    String name,
+    String? path,
+    String? collection, [
+    String? extension,
+  ]);
 
   /// Checks if box exists
-  Future<bool> boxExists(String name, String? path, String? collection);
+  Future<bool> boxExists(
+    String name,
+    String? path,
+    String? collection, [
+    String? extension,
+  ]);
 }

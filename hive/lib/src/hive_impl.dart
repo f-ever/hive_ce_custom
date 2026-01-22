@@ -62,6 +62,15 @@ class HiveImpl extends TypeRegistryImpl implements HiveInterface {
     _managerOverride = BackendManager.select(backendPreference);
   }
 
+  /// Generate a unique box key from name and extension
+  String _boxKey(String name, {String? extension}) {
+    final lowerName = name.toLowerCase();
+    if (extension != null) {
+      return '$lowerName|e:$extension';
+    }
+    return lowerName;
+  }
+
   Future<BoxBase<E>> _openBox<E>(
     String name,
     bool lazy,
@@ -73,6 +82,7 @@ class HiveImpl extends TypeRegistryImpl implements HiveInterface {
     String? path,
     Uint8List? bytes,
     String? collection,
+    String? extension,
   ) async {
     assert(path == null || bytes == null);
     assert(
@@ -82,24 +92,25 @@ class HiveImpl extends TypeRegistryImpl implements HiveInterface {
     typedMapOrIterableCheck<E>();
 
     name = name.toLowerCase();
-    if (isBoxOpen(name)) {
+    final boxKey = _boxKey(name, extension: extension);
+    if (isBoxOpen(name, extension: extension)) {
       if (lazy) {
-        return lazyBox(name);
+        return lazyBox(name, extension: extension);
       } else {
-        return box(name);
+        return box(name, extension: extension);
       }
     } else {
-      if (_openingBoxes.containsKey(name)) {
-        await _openingBoxes[name];
+      if (_openingBoxes.containsKey(boxKey)) {
+        await _openingBoxes[boxKey];
         if (lazy) {
-          return lazyBox(name);
+          return lazyBox(name, extension: extension);
         } else {
-          return box(name);
+          return box(name, extension: extension);
         }
       }
 
       final completer = Completer();
-      _openingBoxes[name] = completer.future;
+      _openingBoxes[boxKey] = completer.future;
 
       BoxBaseImpl<E>? newBox;
       try {
@@ -114,6 +125,7 @@ class HiveImpl extends TypeRegistryImpl implements HiveInterface {
             cipher,
             keyCrc,
             collection,
+            extension,
           );
         }
 
@@ -125,6 +137,7 @@ class HiveImpl extends TypeRegistryImpl implements HiveInterface {
             compaction,
             backend,
             isolated: _isolated,
+            extension: extension,
           );
         } else {
           newBox = BoxImpl<E>(
@@ -134,11 +147,12 @@ class HiveImpl extends TypeRegistryImpl implements HiveInterface {
             compaction,
             backend,
             isolated: _isolated,
+            extension: extension,
           );
         }
 
         await newBox.initialize();
-        _boxes[name] = newBox;
+        _boxes[boxKey] = newBox;
 
         completer.complete();
 
@@ -150,7 +164,7 @@ class HiveImpl extends TypeRegistryImpl implements HiveInterface {
         completer.completeError(error, stackTrace);
         rethrow;
       } finally {
-        _openingBoxes.remove(name)?.ignore();
+        _openingBoxes.remove(boxKey)?.ignore();
       }
     }
   }
@@ -166,6 +180,7 @@ class HiveImpl extends TypeRegistryImpl implements HiveInterface {
     String? path,
     Uint8List? bytes,
     String? collection,
+    String? extension,
     @Deprecated('Use encryptionCipher instead') List<int>? encryptionKey,
   }) async {
     if (encryptionKey != null) {
@@ -182,6 +197,7 @@ class HiveImpl extends TypeRegistryImpl implements HiveInterface {
       path,
       bytes,
       collection,
+      extension,
     ) as Box<E>;
   }
 
@@ -195,6 +211,7 @@ class HiveImpl extends TypeRegistryImpl implements HiveInterface {
     bool crashRecovery = true,
     String? path,
     String? collection,
+    String? extension,
     @Deprecated('Use encryptionCipher instead') List<int>? encryptionKey,
   }) async {
     if (encryptionKey != null) {
@@ -211,12 +228,13 @@ class HiveImpl extends TypeRegistryImpl implements HiveInterface {
       path,
       null,
       collection,
+      extension,
     ) as LazyBox<E>;
   }
 
-  BoxBase<E> _getBoxInternal<E>(String name, [bool? lazy]) {
-    final lowerCaseName = name.toLowerCase();
-    final box = _boxes[lowerCaseName];
+  BoxBase<E> _getBoxInternal<E>(String name, {bool? lazy, String? extension}) {
+    final boxKey = _boxKey(name, extension: extension);
+    final box = _boxes[boxKey];
     if (box != null) {
       if ((lazy == null || box.lazy == lazy) && box.valueType == E) {
         return box as BoxBase<E>;
@@ -224,7 +242,7 @@ class HiveImpl extends TypeRegistryImpl implements HiveInterface {
         final typeName = box is LazyBox
             ? 'LazyBox<${box.valueType}>'
             : 'Box<${box.valueType}>';
-        throw HiveError('The box "$lowerCaseName" is already open '
+        throw HiveError('The box "$boxKey" is already open '
             'and of type $typeName.');
       }
     } else {
@@ -233,21 +251,22 @@ class HiveImpl extends TypeRegistryImpl implements HiveInterface {
   }
 
   /// Not part of public API
-  BoxBase? getBoxWithoutCheckInternal(String name) {
-    final lowerCaseName = name.toLowerCase();
-    return _boxes[lowerCaseName];
+  BoxBase? getBoxWithoutCheckInternal(String name, {String? extension}) {
+    final boxKey = _boxKey(name, extension: extension);
+    return _boxes[boxKey];
   }
 
   @override
-  Box<E> box<E>(String name) => _getBoxInternal<E>(name, false) as Box<E>;
+  Box<E> box<E>(String name, {String? extension}) =>
+      _getBoxInternal<E>(name, lazy: false, extension: extension) as Box<E>;
 
   @override
-  LazyBox<E> lazyBox<E>(String name) =>
-      _getBoxInternal<E>(name, true) as LazyBox<E>;
+  LazyBox<E> lazyBox<E>(String name, {String? extension}) =>
+      _getBoxInternal<E>(name, lazy: true, extension: extension) as LazyBox<E>;
 
   @override
-  bool isBoxOpen(String name) {
-    return _boxes.containsKey(name.toLowerCase());
+  bool isBoxOpen(String name, {String? extension}) {
+    return _boxes.containsKey(_boxKey(name, extension: extension));
   }
 
   @override
@@ -260,10 +279,10 @@ class HiveImpl extends TypeRegistryImpl implements HiveInterface {
   }
 
   /// Not part of public API
-  void unregisterBox(String name) {
-    name = name.toLowerCase();
-    _openingBoxes.remove(name);
-    _boxes.remove(name);
+  void unregisterBox(String name, {String? extension}) {
+    final boxKey = _boxKey(name, extension: extension);
+    _openingBoxes.remove(boxKey);
+    _boxes.remove(boxKey);
   }
 
   @override
@@ -271,13 +290,19 @@ class HiveImpl extends TypeRegistryImpl implements HiveInterface {
     String name, {
     String? path,
     String? collection,
+    String? extension,
   }) async {
-    final lowerCaseName = name.toLowerCase();
-    final box = _boxes[lowerCaseName];
+    final boxKey = _boxKey(name, extension: extension);
+    final box = _boxes[boxKey];
     if (box != null) {
       await box.deleteFromDisk();
     } else {
-      await _manager.deleteBox(lowerCaseName, path ?? homePath, collection);
+      await _manager.deleteBox(
+        name.toLowerCase(),
+        path ?? homePath,
+        collection,
+        extension,
+      );
     }
   }
 

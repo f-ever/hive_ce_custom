@@ -22,6 +22,7 @@ class IsolatedHiveImpl implements IsolatedHiveInterface {
     String? path,
     Uint8List? bytes,
     String? collection,
+    String? extension,
   }) {
     throw UnimplementedError();
   }
@@ -35,22 +36,23 @@ class IsolatedHiveImpl implements IsolatedHiveInterface {
     bool crashRecovery = true,
     String? path,
     String? collection,
+    String? extension,
   }) {
     throw UnimplementedError();
   }
 
   @override
-  IsolatedBox<E> box<E>(String name) {
+  IsolatedBox<E> box<E>(String name, {String? extension}) {
     throw UnimplementedError();
   }
 
   @override
-  IsolatedLazyBox<E> lazyBox<E>(String name) {
+  IsolatedLazyBox<E> lazyBox<E>(String name, {String? extension}) {
     throw UnimplementedError();
   }
 
   @override
-  bool isBoxOpen(String name) {
+  bool isBoxOpen(String name, {String? extension}) {
     throw UnimplementedError();
   }
 

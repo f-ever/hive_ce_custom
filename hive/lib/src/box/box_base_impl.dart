@@ -16,6 +16,9 @@ abstract class BoxBaseImpl<E> implements BoxBase<E>, InspectableBox {
   @override
   final String name;
 
+  /// The extension used for this box's file
+  final String? extension;
+
   /// Not part of public API
   @visibleForTesting
   final HiveImpl hive;
@@ -46,6 +49,7 @@ abstract class BoxBaseImpl<E> implements BoxBase<E>, InspectableBox {
     this._compactionStrategy,
     this.backend, {
     this.isolated = false,
+    this.extension,
   }) {
     keystore = Keystore(this, ChangeNotifier(), keyComparator);
   }
@@ -181,7 +185,7 @@ abstract class BoxBaseImpl<E> implements BoxBase<E>, InspectableBox {
 
     _open = false;
     await keystore.close();
-    hive.unregisterBox(name);
+    hive.unregisterBox(name, extension: extension);
     HiveConnect.unregisterBox(this);
 
     await backend.close();
@@ -192,7 +196,7 @@ abstract class BoxBaseImpl<E> implements BoxBase<E>, InspectableBox {
     if (_open) {
       _open = false;
       await keystore.close();
-      hive.unregisterBox(name);
+      hive.unregisterBox(name, extension: extension);
     }
 
     await backend.deleteFromDisk();

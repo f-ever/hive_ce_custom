@@ -24,6 +24,7 @@ abstract class IsolatedHiveInterface implements TypeRegistry {
     String? path,
     Uint8List? bytes,
     String? collection,
+    String? extension,
   });
 
   /// Open a lazy box in the isolate
@@ -35,16 +36,17 @@ abstract class IsolatedHiveInterface implements TypeRegistry {
     bool crashRecovery = true,
     String? path,
     String? collection,
+    String? extension,
   });
 
   /// Get an object to communicate with the isolated box
-  IsolatedBox<E> box<E>(String name);
+  IsolatedBox<E> box<E>(String name, {String? extension});
 
   /// Get an object to communicate with the isolated box
-  IsolatedLazyBox<E> lazyBox<E>(String name);
+  IsolatedLazyBox<E> lazyBox<E>(String name, {String? extension});
 
   /// Check if a box is open in the isolate
-  bool isBoxOpen(String name);
+  bool isBoxOpen(String name, {String? extension});
 
   /// Shutdown the isolate
   Future<void> close();

@@ -81,6 +81,15 @@ class IsolatedHiveImpl extends TypeRegistryImpl
     );
   }
 
+  /// Generate a unique box key from name and extension
+  String _boxKey(String name, {String? extension}) {
+    final lowerName = name.toLowerCase();
+    if (extension != null) {
+      return '$lowerName|e:$extension';
+    }
+    return lowerName;
+  }
+
   Future<IsolatedBoxBase<E>> _openBox<E>(
     String name,
     bool lazy,
@@ -91,6 +100,7 @@ class IsolatedHiveImpl extends TypeRegistryImpl
     String? path,
     Uint8List? bytes,
     String? collection,
+    String? extension,
   ) async {
     final connection = _connection;
     if (connection == null) {
@@ -100,24 +110,25 @@ class IsolatedHiveImpl extends TypeRegistryImpl
     typedMapOrIterableCheck<E>();
 
     name = name.toLowerCase();
-    if (isBoxOpen(name)) {
+    final boxKey = _boxKey(name, extension: extension);
+    if (isBoxOpen(name, extension: extension)) {
       if (lazy) {
-        return lazyBox(name);
+        return lazyBox(name, extension: extension);
       } else {
-        return box(name);
+        return box(name, extension: extension);
       }
     } else {
-      if (_openingBoxes.containsKey(name)) {
-        await _openingBoxes[name];
+      if (_openingBoxes.containsKey(boxKey)) {
+        await _openingBoxes[boxKey];
         if (lazy) {
-          return lazyBox(name);
+          return lazyBox(name, extension: extension);
         } else {
-          return box(name);
+          return box(name, extension: extension);
         }
       }
 
       final completer = Completer();
-      _openingBoxes[name] = completer.future;
+      _openingBoxes[boxKey] = completer.future;
 
       try {
         final params = {
@@ -130,6 +141,7 @@ class IsolatedHiveImpl extends TypeRegistryImpl
           'path': path,
           'bytes': bytes,
           'collection': collection,
+          'extension': extension,
         };
 
         await _hiveChannel.invokeMethod('openBox', params);
@@ -141,6 +153,7 @@ class IsolatedHiveImpl extends TypeRegistryImpl
                 cipher,
                 connection,
                 _boxChannel,
+                extension: extension,
               )
             : IsolatedBoxImpl<E>(
                 this,
@@ -148,9 +161,10 @@ class IsolatedHiveImpl extends TypeRegistryImpl
                 cipher,
                 connection,
                 _boxChannel,
+                extension: extension,
               );
 
-        _boxes[name] = newBox;
+        _boxes[boxKey] = newBox;
 
         completer.complete();
 
@@ -161,7 +175,7 @@ class IsolatedHiveImpl extends TypeRegistryImpl
         completer.completeError(error, stackTrace);
         rethrow;
       } finally {
-        _openingBoxes.remove(name)?.ignore();
+        _openingBoxes.remove(boxKey)?.ignore();
       }
     }
   }
@@ -176,6 +190,7 @@ class IsolatedHiveImpl extends TypeRegistryImpl
     String? path,
     Uint8List? bytes,
     String? collection,
+    String? extension,
   }) async =>
       await _openBox<E>(
         name,
@@ -187,6 +202,7 @@ class IsolatedHiveImpl extends TypeRegistryImpl
         path,
         bytes,
         collection,
+        extension,
       ) as IsolatedBox<E>;
 
   @override
@@ -198,6 +214,7 @@ class IsolatedHiveImpl extends TypeRegistryImpl
     bool crashRecovery = true,
     String? path,
     String? collection,
+    String? extension,
   }) async =>
       await _openBox<E>(
         name,
@@ -209,11 +226,16 @@ class IsolatedHiveImpl extends TypeRegistryImpl
         path,
         null,
         collection,
+        extension,
       ) as IsolatedLazyBox<E>;
 
-  IsolatedBoxBase<E> _getBoxInternal<E>(String name, bool lazy) {
-    final lowerCaseName = name.toLowerCase();
-    final box = _boxes[lowerCaseName];
+  IsolatedBoxBase<E> _getBoxInternal<E>(
+    String name, {
+    required bool lazy,
+    String? extension,
+  }) {
+    final boxKey = _boxKey(name, extension: extension);
+    final box = _boxes[boxKey];
     if (box != null) {
       if (box.lazy == lazy && box.valueType == E) {
         return box as IsolatedBoxBase<E>;
@@ -221,7 +243,7 @@ class IsolatedHiveImpl extends TypeRegistryImpl
         final typeName = box is IsolatedLazyBox
             ? 'IsolatedLazyBox<${box.valueType}>'
             : 'IsolatedBox<${box.valueType}>';
-        throw HiveError('The box "$lowerCaseName" is already open '
+        throw HiveError('The box "$boxKey" is already open '
             'and of type $typeName.');
       }
     } else {
@@ -232,15 +254,18 @@ class IsolatedHiveImpl extends TypeRegistryImpl
   }
 
   @override
-  IsolatedBox<E> box<E>(String name) =>
-      _getBoxInternal<E>(name, false) as IsolatedBox<E>;
+  IsolatedBox<E> box<E>(String name, {String? extension}) =>
+      _getBoxInternal<E>(name, lazy: false, extension: extension)
+          as IsolatedBox<E>;
 
   @override
-  IsolatedLazyBox<E> lazyBox<E>(String name) =>
-      _getBoxInternal<E>(name, true) as IsolatedLazyBox<E>;
+  IsolatedLazyBox<E> lazyBox<E>(String name, {String? extension}) =>
+      _getBoxInternal<E>(name, lazy: true, extension: extension)
+          as IsolatedLazyBox<E>;
 
   @override
-  bool isBoxOpen(String name) => _boxes.containsKey(name.toLowerCase());
+  bool isBoxOpen(String name, {String? extension}) =>
+      _boxes.containsKey(_boxKey(name, extension: extension));
 
   @override
   Future<void> close() {
@@ -252,11 +277,14 @@ class IsolatedHiveImpl extends TypeRegistryImpl
   }
 
   /// Not part of public API
-  Future<void> unregisterBox(String name) async {
-    name = name.toLowerCase();
-    _openingBoxes.remove(name)?.ignore();
-    _boxes.remove(name);
-    await _hiveChannel.invokeMethod('unregisterBox', {'name': name});
+  Future<void> unregisterBox(String name, {String? extension}) async {
+    final boxKey = _boxKey(name, extension: extension);
+    _openingBoxes.remove(boxKey)?.ignore();
+    _boxes.remove(boxKey);
+    await _hiveChannel.invokeMethod(
+      'unregisterBox',
+      {'name': name, 'extension': extension},
+    );
   }
 
   @override
@@ -268,7 +296,7 @@ class IsolatedHiveImpl extends TypeRegistryImpl
     } else {
       await _hiveChannel.invokeMethod(
         'deleteBoxFromDisk',
-        {'name': name.toLowerCase(), 'path': path},
+        {'name': lowerCaseName, 'path': path},
       );
     }
   }

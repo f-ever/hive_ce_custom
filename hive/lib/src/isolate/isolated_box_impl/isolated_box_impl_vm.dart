@@ -24,6 +24,9 @@ abstract class IsolatedBoxBaseImpl<E>
   final IsolateEventChannel _eventChannel;
   Stream<BoxEvent>? _stream;
 
+  /// The extension used for this box's file
+  final String? extension;
+
   var _open = true;
 
   /// Constructor
@@ -32,8 +35,9 @@ abstract class IsolatedBoxBaseImpl<E>
     this.name,
     this._cipher,
     IsolateConnection connection,
-    this._channel,
-  ) : _eventChannel = IsolateEventChannel('box_$name', connection);
+    this._channel, {
+    this.extension,
+  }) : _eventChannel = IsolateEventChannel('box_$name', connection);
 
   /// Not part of public API
   Type get valueType => E;
@@ -136,7 +140,7 @@ abstract class IsolatedBoxBaseImpl<E>
     if (!_open) return;
     await _channel.invokeMethod('close', {'name': name});
     _open = false;
-    await _hive.unregisterBox(name);
+    await _hive.unregisterBox(name, extension: extension);
     HiveConnect.unregisterBox(this);
   }
 
@@ -145,7 +149,7 @@ abstract class IsolatedBoxBaseImpl<E>
     if (!_open) return;
     await _channel.invokeMethod('deleteFromDisk', {'name': name});
     _open = false;
-    await _hive.unregisterBox(name);
+    await _hive.unregisterBox(name, extension: extension);
   }
 
   @override
@@ -211,8 +215,9 @@ class IsolatedBoxImpl<E> extends IsolatedBoxBaseImpl<E>
     super.name,
     super._cipher,
     super.connection,
-    super._channel,
-  );
+    super._channel, {
+    super.extension,
+  });
 
   @override
   final lazy = false;
@@ -250,8 +255,9 @@ class IsolatedLazyBoxImpl<E> extends IsolatedBoxBaseImpl<E>
     super.name,
     super._cipher,
     super.connection,
-    super._channel,
-  );
+    super._channel, {
+    super.extension,
+  });
 
   @override
   final lazy = true;

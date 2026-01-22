@@ -6,6 +6,15 @@ import 'package:hive_ce/src/isolate/handler/isolated_box_handler.dart';
 import 'package:hive_ce/src/util/logger.dart';
 import 'package:isolate_channel/isolate_channel.dart';
 
+/// Generate a unique box key from name and extension
+String _boxKey(String name, {String? extension}) {
+  final lowerName = name.toLowerCase();
+  if (extension != null) {
+    return '$lowerName|e:$extension';
+  }
+  return lowerName;
+}
+
 /// Method call handler for Hive methods
 Future<dynamic> handleHiveMethodCall(
   IsolateMethodCall call,
@@ -21,13 +30,15 @@ Future<dynamic> handleHiveMethodCall(
     case 'openBox':
       final name = call.arguments['name'];
       final lazy = call.arguments['lazy'];
+      final extension = call.arguments['extension'] as String?;
+      final boxKey = _boxKey(name, extension: extension);
 
-      if (boxHandlers.containsKey(name)) {
+      if (boxHandlers.containsKey(boxKey)) {
         // Ensure this is a valid `openBox` call
         if (lazy) {
-          Hive.lazyBox(name);
+          Hive.lazyBox(name, extension: extension);
         } else {
-          Hive.box(name);
+          Hive.box(name, extension: extension);
         }
         return;
       }
@@ -52,6 +63,7 @@ Future<dynamic> handleHiveMethodCall(
           crashRecovery: crashRecovery,
           path: path,
           collection: collection,
+          extension: extension,
         );
       } else {
         box = await (Hive as HiveImpl).openBox(
@@ -63,14 +75,16 @@ Future<dynamic> handleHiveMethodCall(
           path: path,
           bytes: bytes,
           collection: collection,
+          extension: extension,
         );
       }
 
-      boxHandlers[name] = IsolatedBoxHandler(box, connection);
+      boxHandlers[boxKey] = IsolatedBoxHandler(box, connection);
     case 'deleteBoxFromDisk':
       await Hive.deleteBoxFromDisk(
         call.arguments['name'],
         path: call.arguments['path'],
+        extension: call.arguments['extension'],
       );
     case 'boxExists':
       return Hive.boxExists(
@@ -78,7 +92,11 @@ Future<dynamic> handleHiveMethodCall(
         path: call.arguments['path'],
       );
     case 'unregisterBox':
-      boxHandlers.remove(call.arguments['name']);
+      final name = call.arguments['name'];
+      final extension = call.arguments['extension'] as String?;
+      final boxKey = _boxKey(name, extension: extension);
+      boxHandlers.remove(boxKey);
+      (Hive as HiveImpl).unregisterBox(name, extension: extension);
     default:
       return call.notImplemented();
   }

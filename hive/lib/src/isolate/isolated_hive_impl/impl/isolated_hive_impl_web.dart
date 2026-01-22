@@ -26,6 +26,7 @@ class IsolatedHiveImpl implements IsolatedHiveInterface {
     String? path,
     Uint8List? bytes,
     String? collection,
+    String? extension,
   }) async =>
       IsolatedBoxImpl(
         await Hive.openBox(
@@ -37,6 +38,7 @@ class IsolatedHiveImpl implements IsolatedHiveInterface {
           path: path,
           bytes: bytes,
           collection: collection,
+          extension: extension,
         ),
       );
 
@@ -49,6 +51,7 @@ class IsolatedHiveImpl implements IsolatedHiveInterface {
     bool crashRecovery = true,
     String? path,
     String? collection,
+    String? extension,
   }) async =>
       IsolatedLazyBoxImpl(
         await Hive.openLazyBox(
@@ -59,18 +62,21 @@ class IsolatedHiveImpl implements IsolatedHiveInterface {
           crashRecovery: crashRecovery,
           path: path,
           collection: collection,
+          extension: extension,
         ),
       );
 
   @override
-  IsolatedBox<E> box<E>(String name) => IsolatedBoxImpl(Hive.box(name));
+  IsolatedBox<E> box<E>(String name, {String? extension}) =>
+      IsolatedBoxImpl(Hive.box(name, extension: extension));
 
   @override
-  IsolatedLazyBox<E> lazyBox<E>(String name) =>
-      IsolatedLazyBoxImpl(Hive.lazyBox(name));
+  IsolatedLazyBox<E> lazyBox<E>(String name, {String? extension}) =>
+      IsolatedLazyBoxImpl(Hive.lazyBox(name, extension: extension));
 
   @override
-  bool isBoxOpen(String name) => Hive.isBoxOpen(name);
+  bool isBoxOpen(String name, {String? extension}) =>
+      Hive.isBoxOpen(name, extension: extension);
 
   @override
   Future<void> close() => Hive.close();
